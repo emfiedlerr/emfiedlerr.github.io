@@ -1,0 +1,166 @@
+---
+title: "Human Trafficking in the World"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    theme: readable
+
+---
+
+```{r setup, include=FALSE}
+dir()
+library(flexdashboard)
+library(ggplot2)
+library(dplyr)
+library(sf)
+library(tigris)
+library(leaflet)
+library(reshape)
+library(stringr)
+library(plotly)
+library(tibble)
+library(RColorBrewer)
+library(rworldmap)
+library(tidyr) 
+traffick <- read.csv("globaltrafficking.csv")
+state <- read.csv("states2019.csv")
+cities <-read.csv("cities.csv",stringsAsFactors = FALSE)
+```
+
+Page 1
+===
+Column {data-width=650}
+-----------------------------------------------------------------------
+### Reported Trafficking Cases in Each US State (2019) - National Human Trafficking Hotline
+
+```{r}
+# Choropleth map with the amount of Reported Trafficking Cases in each state
+# in the USA.
+state$State <- state.abb[match(state$State, state.name)]
+plot_ly(type="choropleth", 
+        locations=state$State, 
+        locationmode="USA-states", 
+        z=state$reportedTraffickingCases,
+        colorscale= "Reds") %>% 
+  layout(geo=list(scope="usa"),title="Reported Trafficking <br> Cases in Each US State 2019") %>%
+  colorbar(title = "Cases")
+
+```
+
+Page 2
+===
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+### Ages of Female Human Trafficking Victims Worldwide (2002-2019) - Counter-Trafficking Data Collaborative (CTDC)
+
+```{r}
+traffick2 <- dplyr::rename(traffick,
+                           Year = yearOfRegistration,
+                           Source = Datasource,
+                           Gender = gender,
+                           Age = ageBroad,
+                           Type = typeOfExploitConcatenated, 
+                           Country = citizenship,
+                           Organ = isOrganRemoval,
+                           Labour = isForcedLabour, 
+                           Sex = isSexualExploit, 
+                           Child = meansOfControlUsesChildren, 
+                           Prostitution = typeOfSexProstitution)
+traffick3 <- filter(traffick2,Age!="-99")
+traffick4<- filter(traffick3, Age!="-99", Gender=="Female")
+traffick5<- filter(traffick3, Age!="-99", Gender=="Male")
+
+
+#girls 
+
+g <- ggplot(traffick4, aes(x = Age, fill = factor(Gender))) +
+  geom_bar(stat = "count", fill = "#ffc4b2") +
+  xlab("Age") +
+  ylab("Cases") +
+  scale_x_discrete(limits=c("0--8", "9--17", "18--20", "21--23", "24--26", "27--29", "30--38", "39--47", "48+"))+
+  theme(axis.text.x = element_text(angle=30))+
+  coord_flip() +
+  labs(fill = "Gender")
+g
+```
+
+
+### Ages of Male Human Trafficking Victims Worldwide (2002-2019) - Counter-Trafficking Data Collaborative (CTDC)
+```{r}
+#Boys
+
+b <- ggplot(traffick5, aes(x = Age, fill = factor(Gender))) +
+  geom_bar(stat = "count", fill = "#B1cadb") +
+  xlab("Age") +
+  ylab("Cases") +
+  scale_x_discrete(limits=c("0--8", "9--17", "18--20", "21--23", "24--26", "27--29", "30--38", "39--47", "48+"))+
+  theme(axis.text.x = element_text(angle=30))+
+  coord_flip() +
+  labs(fil = "Gender")
+b
+```
+
+
+```{r}
+```
+
+Page 3
+===
+Column {data-width=650}
+-----------------------------------------------------------------------
+### Growth of Human Trafficking (2015-2019) - National Human Trafficking Hotline
+
+```{r}
+#Growth of Human Trafficking 2015-2019
+type <- read.csv("type.csv")
+type1 <- filter(type, Type!="0")
+library(viridis)
+library(hrbrthemes)
+l <-ggplot(type1, aes(x=Year, y=Cases, fill=Type)) + 
+      geom_area(alpha=0.8 , size=.5, colour="white") +
+      scale_fill_brewer(palette="Reds") +
+      theme_ipsum() + 
+      ggtitle("Growth of Human Trafficking (2015-2019)")
+l <- ggplotly(l)
+l
+```
+
+Page 4
+===
+Column {data-width=650}
+-----------------------------------------------------------------------
+### Top Cities for Human Trafficking in the US (2017) - - National Human Trafficking Hotline
+
+```{r}
+cities1<-cities %>% separate(Geocode, c("lat", "lon"),sep = ",") 
+cities1$lat<-as.numeric(cities1$lat)
+cities1$lon<-as.numeric(cities1$lon)
+leaflet(cities1)%>%
+  addProviderTiles(providers$OpenStreetMap.HOT)%>%
+  setView(lng=-98.77154031957267,lat=40.55465833108507,zoom=4)%>%
+  addCircleMarkers(~lon,~lat,
+             popup=paste(cities$City,"<br>","Number of Reported Cases", "<br>","Per 100,000 people:", cities$Cases), 
+             weight=10,stroke=TRUE, radius= ~Cases/8, color="#bc5449",fillOpacity=.3)
+
+
+```
+
+
+Page 5
+===
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Top 10 Countries for Human Trafficking (2002-2019) - Counter-Trafficking Data Collaborative (CTDC)
+
+```{r}
+traffick4 <- filter(traffick3, Country!="-99", Country!="00")
+traffick7<- factor(traffick4$Country, levels = c("UA", "MD", "US", "ID", "BY","MM", "KH", "RO", "GH", "KG"))
+df<-as.data.frame(traffick7)
+barplot(table(traffick7), ylab="Cases", main="Top 10 Countries for Human Trafficking (2002-2019)", 
+        ylim=c(0,10000), las=2, cex.main=1.2,cex.axis=.8, cex.lab=1, col="#A45A52", names.arg=c("Ukraine", "Un. States", "Moldova", "Indonesia", "Belarus", "Myanmar", "Cambodia", "Romania", "Ghana", "Kyrgyzstan"))
+
+
+```
+
